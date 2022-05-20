@@ -1,0 +1,321 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define INFINITY 9999
+#define MAX_LINE_LENGTH 80
+#define MAX 100
+#define V 4
+
+typedef struct
+{
+   char id[2];
+   char Name[10];
+   char Address[56];
+   char Distance[4];
+   char Vacancies[2];
+} HOSPDETAILS;
+
+// Node
+typedef struct node {
+    char name[10];
+    int data;
+    // Lower values indicate higher priority
+    int priority;
+    struct node* next;
+} Node;
+
+Node* pq;
+//Person distance to hospitals
+HOSPDETAILS p[6] = {0};
+int G[MAX][MAX];
+int hospCount=0;
+//Ambulance paths to reach person
+HOSPDETAILS paths[4] = {0};
+
+// Function to Create A New Node
+Node* newNode(int d, char nm[],int p)
+{
+    Node* temp = (Node*)malloc(sizeof(Node));
+    temp->data = d;  // vacancies
+    strcpy(temp->name,nm);  // hospital name
+    temp->priority = p;  // distance
+    temp->next = NULL;
+    return temp;
+}
+
+// Return the value at head
+int peek(Node** head)
+{
+    return (*head)->data;
+}
+
+// Removes the element with the
+// highest priority form the list
+void pop(Node** head)
+{
+    Node* temp = *head;
+    (*head) = (*head)->next;
+    free(temp);
+}
+
+// Function to push according to priority
+void push(Node** head, int d, char name[], int p)
+{
+    Node* start = (*head);
+
+    // Create new Node
+    Node* temp = newNode(d, name, p);
+
+    // Special Case: The head of list has lesser
+    // priority than new node. So insert new
+    // node before head node and change head node.
+    if ((*head)->priority > p) {
+
+        // Insert New Node before head
+        temp->next = *head;
+        (*head) = temp;
+    }
+    else {
+
+        // Traverse the list and find a
+        // position to insert new node
+        while (start->next != NULL &&
+            start->next->priority < p) {
+            start = start->next;
+        }
+
+        // Either at the ends of the list
+        // or at required position
+        temp->next = start->next;
+        start->next = temp;
+    }
+}
+
+// Function to check is list is empty
+int isEmpty(Node** head)
+{
+    return (*head) == NULL;
+}
+
+void printHospitalDistance(int arr[MAX][MAX], int n)
+{
+  int i,j=2;
+
+  for (i=0;i<n;i++)
+  {
+    printf("Hospital distance graph [person][%s - %d] =  %d\n",p[i].Name,i,arr[1][j]);
+    j++;
+  }
+ }
+
+void open_file(const char *filename)
+{
+   int i = 0;
+   FILE *file = fopen(filename, "r");
+   if ( file )
+   {
+      char line[80];
+      /* Read the file line by line. */
+      while ( fgets(line, sizeof line, file) && i < 6 )
+      {
+         //fputs(line, stdout); /* Display the line. */
+         if ( sscanf(line, "%1s %9c%55c%4s%2s",
+                     p[i].id,
+                     p[i].Name,
+                     p[i].Address,
+                     p[i].Distance,
+                     p[i].Vacancies) == 5 )
+         {
+            printf("id = \"%s\"\n", p[i].id);
+            printf("Name = \"%s\"\n", p[i].Name);
+            printf("Address = \"%s\"\n", p[i].Address);
+            printf("Distance = \"%s\"\n", p[i].Distance);
+            printf("Vacancies = \"%s\"\n", p[i].Vacancies);
+            
+            G[1][(atoi(p[i].id))]=atoi(p[i].Distance);
+            G[(atoi(p[i].id))][1]=atoi(p[i].Distance);
+            ++i;
+            hospCount++;
+         }
+      }
+      fclose(file);
+   }
+   else
+   {
+      perror(filename);
+   }
+}
+
+void dijkstra(int G[MAX][MAX], int n, int startnode)
+{
+   int cost[MAX][MAX],distance[MAX],pred[MAX],visited[MAX],count,mindistance,nxt=1,i,j;
+       for(i=1;i<=n;i++)
+       for(j=1;j<=n;j++)
+       {
+            if(G[i][j]==0)
+               cost[i][j]=INFINITY;
+            else
+               cost[i][j]=G[i][j];
+       }
+       for(i=1;i<=n;i++)
+       {
+          distance[i]=cost[startnode][i];
+          pred[i]=startnode;
+          visited[i]=0;
+       }
+          distance[startnode]=0;
+          visited[startnode]=1;
+          count=1;
+        while(count<n-1)
+       {
+          mindistance=INFINITY;
+            for(i=1;i<=n;i++)
+            if(distance[i]<mindistance&&!visited[i])
+            {
+                mindistance=distance[i];
+                nxt=i;
+            }
+            
+            visited[nxt]=1;
+            
+            for(i=1;i<=n;i++)
+            if(!visited[i])
+            if(mindistance+cost[nxt][i]<distance[i])
+            {
+                distance[i]=mindistance+cost[nxt][i];
+                pred[i]=nxt;
+            }
+            count++;
+        }
+        for(i=1;i<=n;i++){
+            printf("distance %d",distance[i]);
+        }
+        printf("\n Hospital distances from person...%d\n",n);
+        int index=0,minDistanceindex=0,minDist=INFINITY;
+        for(i=1;i<=n;i++)
+            if(i!=startnode)
+            {
+             printf("\nDistance to %s =%d",p[index].Name,distance[i]);
+             // Create a Priority Queue and insert hospital vacanies based on nearest hospitals as priority
+             if(isEmpty(&pq)) 
+                pq = newNode(atoi(p[index].Vacancies), p[index].Name,distance[i]);
+             else
+                push(&pq, atoi(p[index].Vacancies), p[index].Name,distance[i]);
+             
+             index++;
+             printf("\nPath=%d",i);
+             j=i;
+                do
+                {
+                    if(minDist>distance[i])
+                    {
+                        minDist=distance[i];
+                        minDistanceindex=index-1;
+                    }
+                    j=pred[j];
+                    printf("<-%d",j);
+                }
+                while(j!=startnode);
+            }
+            printf("\n Minimum distance Hospital Address := %s and Distance :=%d",p[minDistanceindex].Address,minDist);
+            printf("\n final mindistance hospital :%d",minDistanceindex);
+    }
+
+void floydWarshall (int graph[][V],char src[], char dest[])
+{
+    int dist[V][V], i, j, k;
+
+    for (i = 0; i < V; i++)
+        for (j = 0; j < V; j++)
+            dist[i][j] = graph[i][j];
+
+    for (k = 0; k < V; k++)
+    {
+        // Pick all vertices as source one by one
+        for (i = 0; i < V; i++)
+        {
+            // Pick all vertices as destination for the
+            // above picked source
+            for (j = 0; j < V; j++)
+            {
+                // If vertex k is on the shortest path from
+                // i to j, then update the value of dist[i][j]
+                if (dist[i][k] + dist[k][j] < dist[i][j])
+                    dist[i][j] = dist[i][k] + dist[k][j];
+            }
+        }
+    }
+
+    int distance=0;
+    // Print the shortest distance matrix
+    printf ("\nThe following matrix shows the shortest distances between every place possible\n");
+    for (int i = 0; i < V; i++)
+    {
+        for (int j = 0; j < V; j++)
+        {
+            if (dist[i][j] != INFINITY && dist[i][j] != 0)
+                printf("Distance calculated: %s -> %s : %d \n",paths[i].Name,paths[j].Name,dist[i][j]);
+            if(strcmp(src,paths[i].Name) == 0 && strcmp(dest,paths[j].Name) == 0){
+                distance=dist[i][j];
+            }
+        }
+        printf("\n");
+    }
+    printf("\n");
+    printf("\nShortest distance from source (%s) -> destination (%s) : %d \n",src,dest,distance);
+    printf("\n");
+}
+
+int main(void)
+{
+    char pathline[MAX]={"hubli hospet gangavathi karatagi"};
+    
+    sscanf(pathline, "%6s%7s%11s%8s",paths[0].Name,paths[1].Name,paths[2].Name,paths[3].Name);
+
+    /* Let us create the following weighted graph
+                10
+       (hubli)------->(karatagi)
+        |                /|\
+      5 |                 |  
+        |                 | 1
+       \|/                |
+    (hospet)--------->(gangavathi)
+                3           */
+
+    //hubli - hospet = 5
+    // hubli - karatagi = 10
+    // hospet - gangavathi = 3
+    //gangavathi - karatagi = 1
+    int graph[V][V] = { {0,   5,  INFINITY, 10},
+                        {INFINITY, 0,   3, INFINITY},
+                        {INFINITY, INFINITY, 0,   1},
+                        {INFINITY, INFINITY, INFINITY, 0}
+                      };
+   int pr;
+
+   open_file("file.txt");
+   
+   char source[MAX]={"hubli"};
+   char destination[MAX]={"gangavathi"};
+   pr=61;
+   //int n=6;
+   int startnode=1;
+
+   if (pr>=60&&pr<=100) // pulse rate noraml - give all the hospital paths to person and address of shortest distance
+   {
+       printHospitalDistance(G,hospCount);
+       dijkstra(G,hospCount,startnode);
+   }
+   else if(pr>100) // pulse rate not noraml - give all shortest paths to ambulance to arrive
+   {
+        floydWarshall(graph,source,destination);
+   }
+
+    printf("\n Priority Queue data:");
+    while (!isEmpty(&pq)) {
+        printf("%d ", peek(&pq));
+        pop(&pq);
+    }
+   return 0;
+}
