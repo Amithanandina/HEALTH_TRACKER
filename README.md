@@ -12,5 +12,5 @@ This health tracker calculates the pulse rate and compare it with the normal ran
 3. This is to check whether the hospital has some vacancy.
    Algorithm used:Quick sort and Merge sort
    
-  ### Now let's crack this!
+  ### So let's crack this!
  
